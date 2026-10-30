@@ -1,6 +1,6 @@
-# Caixa Claro API
+# KOGNIT API
 
-API em **C# / .NET 10** do Caixa Claro (Desafio 2, Gestor Inteligente de Pequenos Negócios, Integrativa SI 2026.2).
+API em **C# / .NET 10** do KOGNIT (Desafio 2, Gestor Inteligente de Pequenos Negócios, Integrativa SI 2026.2).
 
 O dono do negócio **conecta o banco que escolher** (Open Finance, via Pluggy) e a API devolve, **sem ele digitar nada**:
 - **Entrou / Saiu / Contas pagas / Pra mim:** cada transação do extrato classificada sozinha (Pix de cliente → venda; CEMIG → energia; DAS → impostos; Pix para o CPF do dono → retirada…);
@@ -21,12 +21,12 @@ Front-end: o app React [caixa-claro](https://github.com/correaaugusto/caixa-clar
 Requisito: [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```bash
-dotnet run --project src/CaixaClaro.Api --urls http://localhost:5080
+dotnet run --project src/Kognit.Api --urls http://localhost:5080
 ```
 
 - Abra **http://localhost:5080/docs** para a documentação interativa (dá para testar todas as rotas).
 - Em desenvolvimento a API já vem com uma chave JWT de teste e o **banco de demonstração** habilitado: crie uma conta em `POST /api/auth/registrar` e chame `POST /api/conexoes/demo`.
-- Exemplos prontos de chamadas: [`src/CaixaClaro.Api/CaixaClaro.Api.http`](src/CaixaClaro.Api/CaixaClaro.Api.http).
+- Exemplos prontos de chamadas: [`src/Kognit.Api/Kognit.Api.http`](src/Kognit.Api/Kognit.Api.http).
 
 ### Testes
 
@@ -47,11 +47,11 @@ São 33 testes:
 |---|---|
 | `Pluggy__ClientId`, `Pluggy__ClientSecret` | credenciais da Pluggy (só no servidor) |
 | `Pluggy__Sandbox` | `true` mostra os bancos de teste no widget |
-| `Pluggy__UrlPublicaApi` | endereço público desta API (para o webhook), ex.: `https://caixa-claro-api.onrender.com` |
+| `Pluggy__UrlPublicaApi` | endereço público desta API (para o webhook), ex.: `https://kognit-api.onrender.com` |
 | `Pluggy__SegredoWebhook` | texto aleatório longo; vai no endereço do webhook |
 | `Jwt__Chave` | chave para assinar os logins (mín. 32 caracteres) — **obrigatória em produção** |
 | `Cors__Origens__0` | endereço do front, ex.: `https://caixa-claro.vercel.app` |
-| `ConnectionStrings__Padrao` | banco de dados (padrão: SQLite `caixaclaro.db`) |
+| `ConnectionStrings__Padrao` | banco de dados (padrão: SQLite `kognit.db`) |
 
 3. No front, use o widget **Pluggy Connect** com o token de `POST /api/conexoes/token` e envie o `item.id` para `POST /api/conexoes` (passo a passo em `docs/FRONTEND.md`).
 
@@ -93,8 +93,8 @@ Configure as variáveis da tabela acima e um volume em `/data` (onde fica o SQLi
 ## Estrutura
 
 ```
-src/CaixaClaro.Dominio   regras de negócio puras (testáveis, sem banco nem HTTP)
-src/CaixaClaro.Api       controllers, EF Core, cliente Pluggy, sincronização em segundo plano
-tests/CaixaClaro.Tests   testes do domínio e da API
+src/Kognit.Dominio   regras de negócio puras (testáveis, sem banco nem HTTP)
+src/Kognit.Api       controllers, EF Core, cliente Pluggy, sincronização em segundo plano
+tests/Kognit.Tests   testes do domínio e da API
 docs/                    decisões, arquitetura, integração com o front
 ```

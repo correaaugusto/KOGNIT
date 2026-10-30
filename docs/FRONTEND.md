@@ -1,4 +1,4 @@
-# Integrando o front React com a Caixa Claro API
+# Integrando o front React com a KOGNIT API
 
 Guia para o app React (o [caixa-claro](https://github.com/correaaugusto/caixa-claro) ou outro) consumir esta API.
 
@@ -20,8 +20,8 @@ Na API, o endereço do front precisa estar em `Cors:Origens` (`http://localhost:
 // src/api/cliente.js
 const API = import.meta.env.VITE_API_URL;
 
-export function salvarToken(token) { localStorage.setItem('caixa-claro:token', token); }
-export function token() { return localStorage.getItem('caixa-claro:token'); }
+export function salvarToken(token) { localStorage.setItem('kognit:token', token); }
+export function token() { return localStorage.getItem('kognit:token'); }
 
 export async function api(caminho, { metodo = 'GET', corpo } = {}) {
   const r = await fetch(`${API}${caminho}`, {
@@ -32,7 +32,7 @@ export async function api(caminho, { metodo = 'GET', corpo } = {}) {
     },
     body: corpo ? JSON.stringify(corpo) : undefined,
   });
-  if (r.status === 401) { localStorage.removeItem('caixa-claro:token'); throw new Error('Entre de novo'); }
+  if (r.status === 401) { localStorage.removeItem('kognit:token'); throw new Error('Entre de novo'); }
   if (r.status === 204 || r.status === 202) return null;
   const dados = await r.json();
   // Erros vêm no padrão ProblemDetails: { title, status, errors? }

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Kognit.Api/Kognit.Api.csproj" />
+    <Project Path="src/Kognit.Dominio/Kognit.Dominio.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Kognit.Tests/Kognit.Tests.csproj" />
+  </Folder>
+</Solution>

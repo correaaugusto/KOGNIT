@@ -1,9 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/CaixaClaro.Api/CaixaClaro.Api.csproj" />
-    <Project Path="src/CaixaClaro.Dominio/CaixaClaro.Dominio.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/CaixaClaro.Tests/CaixaClaro.Tests.csproj" />
-  </Folder>
-</Solution>

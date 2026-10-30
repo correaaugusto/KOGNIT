@@ -1,0 +1,60 @@
+# Exemplos de chamadas (VS Code com a extensão REST Client, ou Visual Studio / Rider).
+# 1) Rode a API:  dotnet run --project src/Kognit.Api
+# 2) Execute "registrar" e copie o token para @token.
+
+@api = http://localhost:5080
+@token = COLE_O_TOKEN_AQUI
+
+### Criar conta
+POST {{api}}/api/auth/registrar
+Content-Type: application/json
+
+{ "nome": "Augusto", "email": "augusto@exemplo.com", "senha": "senha-forte-123", "nomeNegocio": "Pet Shop Amigo Fiel" }
+
+### Entrar
+POST {{api}}/api/auth/entrar
+Content-Type: application/json
+
+{ "email": "augusto@exemplo.com", "senha": "senha-forte-123" }
+
+### O que está disponível (Pluggy configurada? demo?)
+GET {{api}}/api/conexoes/provedores
+Authorization: Bearer {{token}}
+
+### Conectar o banco de demonstração (sem chaves da Pluggy)
+POST {{api}}/api/conexoes/demo
+Authorization: Bearer {{token}}
+
+### Banco real — passo 1: token para abrir o widget Pluggy Connect
+POST {{api}}/api/conexoes/token
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### Banco real — passo 2: depois do widget, enviar o item.id
+POST {{api}}/api/conexoes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "itemId": "ID_DO_ITEM_DEVOLVIDO_PELO_WIDGET" }
+
+### Tela inicial
+GET {{api}}/api/painel
+Authorization: Bearer {{token}}
+
+### Extrato (filtro: tudo | entrou | saiu | contasPagas | praMim)
+GET {{api}}/api/extrato?filtro=entrou
+Authorization: Bearer {{token}}
+
+### Contas a pagar (status: abertas | pagas | todas)
+GET {{api}}/api/contas
+Authorization: Bearer {{token}}
+
+### Previsão de 30 dias com "E se eu retirar R$ 500 a menos?"
+GET {{api}}/api/previsao?menosRetiradaMes=500
+Authorization: Bearer {{token}}
+
+### Confira
+GET {{api}}/api/lancamentos/confira
+Authorization: Bearer {{token}}

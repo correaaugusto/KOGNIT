@@ -1,4 +1,4 @@
-# Como a Caixa Claro API foi programada
+# Como a KOGNIT API foi programada
 
 Guia para entender o código: camadas, caminho de cada requisição, onde fica cada regra e como estender. As razões de cada escolha estão em [`DECISOES.md`](DECISOES.md).
 
@@ -6,7 +6,7 @@ Guia para entender o código: camadas, caminho de cada requisição, onde fica c
 
 ```mermaid
 flowchart LR
-    App["Front React<br/>(celular)"] -- "HTTPS + JWT" --> Api["Caixa Claro API<br/>ASP.NET Core"]
+    App["Front React<br/>(celular)"] -- "HTTPS + JWT" --> Api["KOGNIT API<br/>ASP.NET Core"]
     App -- "widget Pluggy Connect<br/>(token da API)" --> Pluggy[(Pluggy<br/>Open Finance)]
     Pluggy -- "dados do banco<br/>do usuário" --> Banco[(Banco do usuário)]
     Api -- "REST: contas, transações,<br/>faturas" --> Pluggy
@@ -17,8 +17,8 @@ flowchart LR
 ## 2. Camadas e pastas
 
 ```
-CaixaClaro.slnx
-├── src/CaixaClaro.Dominio/          ← regras de negócio PURAS (sem banco, sem HTTP)
+Kognit.slnx
+├── src/Kognit.Dominio/          ← regras de negócio PURAS (sem banco, sem HTTP)
 │   ├── Modelos/Modelos.cs            Lancamento, Conta, RegraClassificacao, TransacaoBancaria, EstadoFinanceiro
 │   ├── Regras/Texto.cs               limpeza das descrições, chave do favorecido, meio de pagamento, R$
 │   ├── Regras/Classificador.cs       o que é cada transação (venda, gasto+categoria, retirada, aporte)
@@ -27,7 +27,7 @@ CaixaClaro.slnx
 │   ├── Regras/LinhaDigitavel.cs      valor e vencimento a partir da linha digitável do boleto
 │   └── Demo/ExtratoDemo.cs           extrato simulado (pet shop) + modo apresentação
 │
-├── src/CaixaClaro.Api/              ← entrega HTTP, persistência e integrações
+├── src/Kognit.Api/              ← entrega HTTP, persistência e integrações
 │   ├── Program.cs                    monta tudo: banco, JWT, CORS, Pluggy, segundo plano, OpenAPI
 │   ├── Controllers/                  rotas (uma classe por recurso)
 │   ├── Contratos/Contratos.cs        JSON de entrada e saída (DTOs) — o "contrato" com o React
@@ -36,7 +36,7 @@ CaixaClaro.slnx
 │   ├── Bancos/                       IProvedorBancario: ProvedorPluggy (real) e ProvedorDemo
 │   └── Servicos/                     Sincronizador, fila + trabalhadores em segundo plano, token JWT
 │
-└── tests/CaixaClaro.Tests/
+└── tests/Kognit.Tests/
     ├── Dominio/                      testes das regras (rápidos, sem servidor)
     └── Api/                          API em memória + Pluggy falsa (PluggyFalsa.cs)
 ```

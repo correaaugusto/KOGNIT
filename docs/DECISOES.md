@@ -1,6 +1,8 @@
-# Decisões do projeto: Caixa Claro API
+# Decisões do projeto: KOGNIT API
 
 Cada decisão traz **o que foi decidido**, **por quê** e, quando houve, **as alternativas consideradas**.
+
+> **Nome do projeto:** em 30/10/2026 o projeto passou a se chamar **KOGNIT** (antes "Caixa Claro"). No código, os projetos e namespaces se chamam `Kognit.*` (padrão PascalCase do C#). O repositório do app React continua com o nome antigo (`caixa-claro`).
 
 Este repositório continua o projeto [caixa-claro](https://github.com/correaaugusto/caixa-claro) (Desafio 2, Integrativa SI 2026.2). As decisões de produto (público-alvo, foco em previsão de caixa, regras de alerta) estão no `docs/DECISOES.md` daquele repositório e **não foram alteradas**. Aqui ficam as decisões da API.
 
@@ -31,9 +33,9 @@ Este repositório continua o projeto [caixa-claro](https://github.com/correaaugu
 
 ### A2. Três projetos: Domínio, Api e Tests
 ```
-src/CaixaClaro.Dominio   regras puras (classificação, contas fixas, previsão, alertas)  — sem banco, sem HTTP
-src/CaixaClaro.Api       controllers, banco de dados, Pluggy, segundo plano
-tests/CaixaClaro.Tests   testes do domínio + testes da API rodando em memória
+src/Kognit.Dominio   regras puras (classificação, contas fixas, previsão, alertas)  — sem banco, sem HTTP
+src/Kognit.Api       controllers, banco de dados, Pluggy, segundo plano
+tests/Kognit.Tests   testes do domínio + testes da API rodando em memória
 ```
 - **Por quê:**
   - As regras de negócio são o coração do produto e precisam ser testadas sem subir servidor nem banco.
@@ -61,7 +63,7 @@ tests/CaixaClaro.Tests   testes do domínio + testes da API rodando em memória
 ## 3. Banco de dados
 
 ### B1. EF Core + SQLite
-- **Decisão:** Entity Framework Core com **SQLite** (um arquivo `caixaclaro.db`).
+- **Decisão:** Entity Framework Core com **SQLite** (um arquivo `kognit.db`).
 - **Por quê:** é zero configuração para rodar localmente e na apresentação. Trocar para **PostgreSQL** em produção é só mudar o provedor e a connection string (`UseNpgsql`), porque o resto do código usa EF.
 - **Limitação:** SQLite guarda `decimal` como texto, então somar e ordenar valores direto no SQL não é confiável. Por isso as contas são feitas em memória (B2).
 
