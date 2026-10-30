@@ -275,7 +275,7 @@ tests/Kognit.Tests   testes do domínio + testes da API rodando em memória
 
 ## 11. Hospedagem
 
-- **A Vercel não roda .NET.** O front React continua na Vercel. A API vai para a **AWS**, com o banco no **Supabase** (seção 13; passo a passo em `docs/DEPLOY-AWS.md`).
+- **A Vercel não roda .NET.** O front React continua na Vercel. A API vai para o **Render**, com o banco no **Supabase** (seção 13; passo a passo em `docs/DEPLOY-RENDER.md`; configuração em `render.yaml`).
 - **Variáveis de ambiente obrigatórias:**
   - `Jwt__Chave`;
   - `ConnectionStrings__Padrao` (Supabase) e `BancoDeDados__Provedor=Postgres`;
@@ -288,13 +288,13 @@ tests/Kognit.Tests   testes do domínio + testes da API rodando em memória
 
 1. **Integrar o front React** a esta API (guia em `docs/FRONTEND.md`), substituindo o `localStorage` e as funções `/api` da Vercel.
 2. **Notificação push** no celular quando o webhook trouxer transação nova (Web Push com VAPID).
-3. **Publicar** na AWS com o banco no Supabase (`docs/DEPLOY-AWS.md`). As migrações e o PostgreSQL já estão prontos (B1, B3, B5).
+3. **Publicar** no Render com o banco no Supabase (`docs/DEPLOY-RENDER.md`). As migrações, o PostgreSQL e o `render.yaml` já estão prontos (B1, B3, B5, H4).
 4. **LGPD** (seção S5) e **produção na Pluggy** (a conta em teste só conecta bancos de teste).
 5. **Leitura do código de barras pela câmera** e **DDA** para boletos avulsos.
 
 ---
 
-## 13. Supabase (banco) + AWS (servidor)
+## 13. Supabase (banco) + Render (servidor)
 
 ### H1. Supabase como banco de dados
 - **Decisão do usuário:** "o banco a princípio será Supabase".
@@ -312,27 +312,53 @@ tests/Kognit.Tests   testes do domínio + testes da API rodando em memória
 ### H3. Conexão pelo *Session pooler* do Supabase
 - **Decisão:** usar o *Session pooler* (porta 5432) e não a conexão direta.
 - **Por quê:**
-  - a conexão direta do Supabase usa IPv6, e a rede padrão da AWS é IPv4;
+  - a conexão direta do Supabase usa IPv6, e muitas hospedagens só têm saída IPv4; o pooler funciona nas duas;
   - o modo *Transaction* (6543) não mantém a sessão entre comandos, e o modo *Session* é o caminho seguro para o EF.
 - **Na connection string:**
   - `SSL Mode=Require` (conexão criptografada);
   - `Maximum Pool Size=10` (não esgota as conexões do plano);
   - `EnableRetryOnFailure` no EF (refaz sozinho quedas rápidas de rede).
 
-### H4. AWS: EC2 + Docker + Caddy agora; ECS Fargate depois
-- **Decisão (MVP):** uma máquina **EC2** em São Paulo (`sa-east-1`, mesma região do Supabase) rodando `docker compose`:
-  - a **API**;
-  - o **Caddy**, que obtém e renova o **HTTPS** sozinho.
+### H4. Render para a API (decisão revista: primeiro planejamos AWS)
+- **Histórico:**
+  1. O primeiro plano foi uma máquina **AWS EC2** com Docker e Caddy, para o HTTPS.
+  2. Com o banco no Supabase, o usuário perguntou se a AWS era necessária.
+  3. Resposta: **não**. A API precisa de algum lugar que rode .NET, e o Supabase não roda.
+  4. A escolha passou para o **Render**.
+- **Decisão:** **Render**, configurado pelo **`render.yaml`** (*Blueprint*) na raiz. Ele descreve:
+  - serviço web Docker, com o `Dockerfile` da raiz;
+  - região `virginia`;
+  - verificação de saúde em `/saude`;
+  - todas as variáveis de ambiente.
 - **Por quê:**
-  - é o caminho mais simples e barato;
-  - o HTTPS é obrigatório: o navegador bloqueia um front HTTPS chamando uma API HTTP, e o webhook da Pluggy precisa de HTTPS;
-  - com o banco no Supabase, a máquina não guarda dados e pode ser recriada sem perda.
-- **Depois (produção):** **ECR + ECS Fargate + Application Load Balancer + ACM + Secrets Manager**. Antes de rodar várias tarefas, trocar a trava por usuário (U4).
+  - nenhuma máquina para administrar;
+  - **HTTPS** e endereço público prontos;
+  - **novo deploy a cada `git push`**;
+  - a configuração fica versionada no Git;
+  - plano gratuito para a apresentação.
+- **Plano:** o `render.yaml` começa em `free`. No gratuito, o serviço **hiberna** sem uso, o que atrasa o webhook e a sincronização em segundo plano. Com clientes reais, trocar para `starter`.
 - **Alternativas consideradas:**
-  - *Elastic Beanstalk*: também serviria, mas tem mais peças sem ganho real no MVP;
-  - *Lightsail*: preço fixo e simples, também serviria.
+  - *AWS EC2 + Caddy*: mais controle, mais trabalho;
+  - *Railway*: cobra por uso;
+  - *Fly.io*: pede cartão;
+  - *Azure App Service*: mais configuração.
+- **Como verificamos o formato do `render.yaml`:** o site do Render estava bloqueado neste ambiente. Os campos foram conferidos em repositórios **oficiais** do Render no GitHub:
+  - `runtime`, `plan: free`, `healthCheckPath`, `generateValue: true` e `sync: false` em exemplos de `render-examples`;
+  - planos e regiões na documentação do provedor Terraform oficial (`render-oss/terraform-provider-render`).
 
-### H5. IP real do usuário atrás do proxy
-- **Problema:** atrás do Caddy (ou do ALB), a API veria todos os usuários com o IP do proxy. O limite de 10 tentativas de login por minuto passaria a valer **para todos juntos**.
-- **Decisão:** `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` no `docker-compose.yml`, para a API usar o `X-Forwarded-For` repassado pelo proxy.
-- **Por que é seguro:** a porta da API (8080) não é publicada; só o Caddy, na rede interna do Docker, chega nela.
+### H5. Região: banco e servidor juntos em Virginia
+- **Fato verificado:** as regiões do Render são `frankfurt`, `ohio`, `oregon`, `singapore` e `virginia`. **Não há São Paulo.**
+- **Decisão:** Render em `virginia` e projeto Supabase em **East US (North Virginia)**.
+- **Por quê:** cada tela faz várias consultas ao banco (B2). Com banco e servidor em continentes diferentes, cada consulta somaria a ida e volta da rede, e as telas ficariam lentas.
+- **LGPD:** dados fora do Brasil exigem salvaguardas de transferência internacional. Validar antes de ter clientes reais.
+
+### H6. Robustez para a hospedagem (código)
+Pontos que não conseguimos confirmar na documentação do Render. Em vez de depender deles, o código foi feito para funcionar de qualquer jeito:
+- **Porta:** se existir a variável `PORT`, a API escuta nela (`Program.cs`). Testado com `PORT=10000`.
+- **Segredo JWT de qualquer tamanho:** o segredo passa por **SHA-256** e vira sempre uma chave de 256 bits (`JwtOpcoes.ChaveAssinatura`). O mínimo caiu para 20 caracteres, e assim o segredo gerado pelo Render (base64) nunca é "curto demais".
+- **Endereço público para o webhook:** se `Pluggy:UrlPublicaApi` estiver vazio, a API usa `RENDER_EXTERNAL_URL` (fornecido pelo Render). Se mesmo assim faltar, a API **avisa no log** ao iniciar.
+- **Segredo do webhook com `+`, `/` e `=`** (comum em valores base64): o teste `HospedagemTests` prova que o endereço gerado continua válido e que um segredo diferente é recusado.
+
+### H7. IP real do usuário atrás do proxy
+- **Problema:** o Render fica na frente da API como proxy. Sem tratamento, a API veria todos os usuários com o mesmo IP, e o limite de 10 tentativas de login por minuto valeria **para todos juntos**.
+- **Decisão:** `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` no `render.yaml`, para a API usar o `X-Forwarded-For` repassado pelo proxy. O ASP.NET usa só o último endereço da lista, o que o proxy adicionou.

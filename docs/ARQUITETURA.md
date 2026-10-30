@@ -149,7 +149,7 @@ As outras telas seguem o mesmo padrão: **carregar estado → função do Domín
 
 O Domínio não muda.
 
-**Banco de dados:** já funciona com SQLite e PostgreSQL/Supabase (`Infra/BancoDeDados.cs`). Ao mudar uma entidade, crie a migração:
+**Banco de dados:** já funciona com SQLite e PostgreSQL/Supabase (`Infra/BancoDeDados.cs`). A publicação (Supabase + Render) está em `DEPLOY-RENDER.md`. Ao mudar uma entidade, crie a migração:
 
 ```bash
 dotnet ef migrations add NomeDaMudanca -p src/Kognit.Api -o Infra/Migracoes

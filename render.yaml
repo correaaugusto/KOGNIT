@@ -1,0 +1,40 @@
+# Blueprint do Render: cria a KOGNIT API a partir deste repositório (passo a passo em docs/DEPLOY-RENDER.md).
+# No Render: New → Blueprint → escolha o repositório KOGNIT. Os valores com "sync: false" são pedidos na tela.
+services:
+  - type: web
+    name: kognit-api
+    runtime: docker            # usa o Dockerfile da raiz do repositório
+    plan: free                 # "starter" (pago) não hiberna: melhor para webhooks e sincronização em segundo plano
+    region: virginia           # crie o projeto Supabase na mesma região: East US (North Virginia)
+    healthCheckPath: /saude
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      # Banco: Supabase (PostgreSQL). Cole a conexão do "Session pooler" (ver o guia).
+      - key: BancoDeDados__Provedor
+        value: Postgres
+      - key: ConnectionStrings__Padrao
+        sync: false
+      # Segredos gerados pelo próprio Render
+      - key: Jwt__Chave
+        generateValue: true
+      - key: Pluggy__SegredoWebhook
+        generateValue: true
+      # Pluggy (Open Finance). O endereço do webhook usa o endereço público do Render sozinho.
+      - key: Pluggy__ClientId
+        sync: false
+      - key: Pluggy__ClientSecret
+        sync: false
+      - key: Pluggy__Sandbox
+        value: "true"
+      # Endereço do front (Vercel), ex.: https://kognit.vercel.app
+      - key: Cors__Origens__0
+        sync: false
+      # O Render fica na frente da API como proxy: usa o IP real do usuário no limite de tentativas de login
+      - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+        value: "true"
+      # Banco de demonstração e modo apresentação (desligue em produção com clientes reais)
+      - key: Demo__Habilitado
+        value: "true"
+      - key: Simulacao__Habilitada
+        value: "true"

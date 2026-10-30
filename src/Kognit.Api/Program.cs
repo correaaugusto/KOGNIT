@@ -19,8 +19,19 @@ var config = builder.Configuration;
 builder.Services.Configure<PluggyOpcoes>(config.GetSection("Pluggy"));
 builder.Services.Configure<JwtOpcoes>(config.GetSection("Jwt"));
 var jwt = config.GetSection("Jwt").Get<JwtOpcoes>() ?? new JwtOpcoes();
-if (jwt.Chave.Length < 32)
-    throw new InvalidOperationException("Configure Jwt:Chave com pelo menos 32 caracteres (em produção: variável de ambiente Jwt__Chave).");
+if (jwt.Chave.Length < JwtOpcoes.TamanhoMinimoChave)
+    throw new InvalidOperationException($"Configure Jwt:Chave com pelo menos {JwtOpcoes.TamanhoMinimoChave} caracteres (em produção: variável de ambiente Jwt__Chave).");
+
+// Hospedagens como o Render informam a porta na variável PORT: se existir, a API escuta nela.
+if (Environment.GetEnvironmentVariable("PORT") is { Length: > 0 } porta)
+    builder.WebHost.UseUrls($"http://+:{porta}");
+
+// Endereço público para o webhook da Pluggy: se Pluggy:UrlPublicaApi não for informado, usa o que o Render
+// fornece sozinho (RENDER_EXTERNAL_URL, ex.: https://kognit-api.onrender.com).
+builder.Services.PostConfigure<PluggyOpcoes>(o =>
+{
+    if (string.IsNullOrWhiteSpace(o.UrlPublicaApi)) o.UrlPublicaApi = config["RENDER_EXTERNAL_URL"];
+});
 
 // ---------- Banco de dados ----------
 builder.Services.AddDbContext<AppDbContext>(o => BancoDeDados.Configurar(o, config));
@@ -85,6 +96,12 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .AllowAnyMethod()));
 
 var app = builder.Build();
+
+// Sem endereço público ou segredo, a Pluggy não tem como avisar de transações novas (webhook).
+var pluggyOp = app.Services.GetRequiredService<IOptions<PluggyOpcoes>>().Value;
+if (pluggyOp.Configurado && (string.IsNullOrWhiteSpace(pluggyOp.UrlPublicaApi) || string.IsNullOrWhiteSpace(pluggyOp.SegredoWebhook)))
+    app.Logger.LogWarning("Webhook da Pluggy desligado: defina Pluggy__UrlPublicaApi (endereço público da API) e Pluggy__SegredoWebhook. "
+        + "Sem ele, os dados do banco só atualizam ao abrir o app, no botão \"atualizar\" e na rotina periódica.");
 
 // Postgres/Supabase: aplica as migrações pendentes. SQLite: cria o arquivo na primeira execução.
 using (var escopo = app.Services.CreateScope())

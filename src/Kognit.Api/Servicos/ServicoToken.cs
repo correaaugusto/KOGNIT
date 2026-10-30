@@ -8,13 +8,18 @@ namespace Kognit.Api.Servicos;
 
 public class JwtOpcoes
 {
-    /// <summary>Chave secreta para assinar os tokens (no mínimo 32 caracteres). Em produção: variável de ambiente Jwt__Chave.</summary>
+    /// <summary>Segredo para assinar os tokens (no mínimo 20 caracteres). Em produção: variável de ambiente Jwt__Chave
+    /// (no Render, gerada sozinha pelo render.yaml).</summary>
     public string Chave { get; set; } = "";
+
+    public const int TamanhoMinimoChave = 20;
     public string Emissor { get; set; } = "kognit-api";
     public string Publico { get; set; } = "kognit-app";
     public int DiasValidade { get; set; } = 7;
 
-    public SymmetricSecurityKey ChaveAssinatura() => new(Encoding.UTF8.GetBytes(Chave));
+    /// <summary>A chave HMAC-SHA256 precisa de 256 bits: o segredo (de qualquer tamanho) passa por SHA-256,
+    /// que sempre devolve 32 bytes. Assim um segredo gerado pelo provedor de hospedagem nunca é "curto demais".</summary>
+    public SymmetricSecurityKey ChaveAssinatura() => new(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(Chave)));
 }
 
 public class ServicoToken(Microsoft.Extensions.Options.IOptions<JwtOpcoes> opcoes, TimeProvider tempo)
