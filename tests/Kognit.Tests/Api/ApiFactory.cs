@@ -15,10 +15,27 @@ public class ApiFactory : WebApplicationFactory<Program>
     public const string SegredoWebhook = "segredo-de-teste";
     private readonly string _arquivoBanco = Path.Combine(Path.GetTempPath(), $"kognit-teste-{Guid.NewGuid():N}.db");
 
+    /// <summary>
+    /// Com a variável KOGNIT_TESTE_POSTGRES (ex.: "Host=localhost;Username=kognit;Password=…"), os testes rodam
+    /// num PostgreSQL de verdade: cada execução cria um banco novo, aplica as migrações e apaga no final.
+    /// Sem ela, usam um arquivo SQLite temporário.
+    /// </summary>
+    private static readonly string? BasePostgres = Environment.GetEnvironmentVariable("KOGNIT_TESTE_POSTGRES");
+    private readonly string _bancoPostgres = $"kognit_teste_{Guid.NewGuid():N}";
+    public static bool UsandoPostgres => !string.IsNullOrWhiteSpace(BasePostgres);
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testes");
-        builder.UseSetting("ConnectionStrings:Padrao", $"Data Source={_arquivoBanco}");
+        if (UsandoPostgres)
+        {
+            builder.UseSetting("BancoDeDados:Provedor", "Postgres");
+            builder.UseSetting("ConnectionStrings:Padrao", $"{BasePostgres};Database={_bancoPostgres}");
+        }
+        else
+        {
+            builder.UseSetting("ConnectionStrings:Padrao", $"Data Source={_arquivoBanco}");
+        }
         builder.UseSetting("Jwt:Chave", "chave-de-teste-com-pelo-menos-32-caracteres!!");
         builder.UseSetting("Pluggy:ClientId", "id-teste");
         builder.UseSetting("Pluggy:ClientSecret", "segredo-teste");
@@ -33,6 +50,15 @@ public class ApiFactory : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
+        if (UsandoPostgres)
+        {
+            Npgsql.NpgsqlConnection.ClearAllPools();
+            using var conexao = new Npgsql.NpgsqlConnection($"{BasePostgres};Database=postgres");
+            conexao.Open();
+            using var cmd = new Npgsql.NpgsqlCommand($"DROP DATABASE IF EXISTS \"{_bancoPostgres}\" WITH (FORCE)", conexao);
+            cmd.ExecuteNonQuery();
+            return;
+        }
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         try { File.Delete(_arquivoBanco); } catch (IOException) { }
     }

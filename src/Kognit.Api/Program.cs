@@ -23,7 +23,7 @@ if (jwt.Chave.Length < 32)
     throw new InvalidOperationException("Configure Jwt:Chave com pelo menos 32 caracteres (em produção: variável de ambiente Jwt__Chave).");
 
 // ---------- Banco de dados ----------
-builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(config.GetConnectionString("Padrao") ?? "Data Source=kognit.db"));
+builder.Services.AddDbContext<AppDbContext>(o => BancoDeDados.Configurar(o, config));
 builder.Services.AddScoped<RepositorioEstado>();
 
 // ---------- Autenticação: JWT; tudo exige login, exceto o que tiver [AllowAnonymous] ----------
@@ -86,9 +86,9 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
 
 var app = builder.Build();
 
-// Cria o banco de dados na primeira execução (ver docs/DECISOES.md sobre migrações).
+// Postgres/Supabase: aplica as migrações pendentes. SQLite: cria o arquivo na primeira execução.
 using (var escopo = app.Services.CreateScope())
-    escopo.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
+    BancoDeDados.Preparar(escopo.ServiceProvider.GetRequiredService<AppDbContext>(), config);
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

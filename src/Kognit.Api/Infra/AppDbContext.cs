@@ -5,6 +5,12 @@ namespace Kognit.Api.Infra;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
+    /// <summary>
+    /// No PostgreSQL (Supabase) as tabelas ficam no schema "kognit", e não no "public": o Supabase expõe o
+    /// schema "public" numa API REST automática (Data API) acessível com a chave pública do projeto.
+    /// </summary>
+    public const string Schema = "kognit";
+
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<ConexaoBancaria> Conexoes => Set<ConexaoBancaria>();
     public DbSet<ContaBancaria> ContasBancarias => Set<ContaBancaria>();
@@ -19,6 +25,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     {
         b.Properties<DateTime>().HaveConversion<DataUtcConverter>();
         b.Properties<DateTime?>().HaveConversion<DataUtcNulavelConverter>();
+        // Dinheiro com 2 casas (no PostgreSQL vira numeric(18,2)).
+        b.Properties<decimal>().HavePrecision(18, 2);
     }
 
     private sealed class DataUtcConverter() : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
@@ -30,6 +38,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        if (Database.IsNpgsql()) b.HasDefaultSchema(Schema);
         b.Entity<Usuario>(e =>
         {
             e.HasIndex(u => u.Email).IsUnique();

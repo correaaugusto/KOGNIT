@@ -9,3 +9,4 @@ obj/
 *.user
 TestResults/
 appsettings.*.local.json
+.env

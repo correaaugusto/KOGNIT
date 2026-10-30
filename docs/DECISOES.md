@@ -62,10 +62,13 @@ tests/Kognit.Tests   testes do domínio + testes da API rodando em memória
 
 ## 3. Banco de dados
 
-### B1. EF Core + SQLite
-- **Decisão:** Entity Framework Core com **SQLite** (um arquivo `kognit.db`).
-- **Por quê:** é zero configuração para rodar localmente e na apresentação. Trocar para **PostgreSQL** em produção é só mudar o provedor e a connection string (`UseNpgsql`), porque o resto do código usa EF.
-- **Limitação:** SQLite guarda `decimal` como texto, então somar e ordenar valores direto no SQL não é confiável. Por isso as contas são feitas em memória (B2).
+### B1. EF Core com dois provedores: SQLite (desenvolvimento) e PostgreSQL / Supabase (produção)
+- **Decisão:** Entity Framework Core. O provedor é escolhido por `BancoDeDados:Provedor`:
+  - `Sqlite` (padrão): um arquivo `kognit.db`, para desenvolver e rodar os testes rápidos;
+  - `Postgres`: o **Supabase** em produção (seção 13).
+- **Por quê:** SQLite é zero configuração para quem está começando a mexer no projeto. O Supabase dá um PostgreSQL gerenciado, com backup, para os dados reais. Como o resto do código usa EF, a troca é só configuração (`Infra/BancoDeDados.cs`).
+- **Garantia de que funciona nos dois:** os 33 testes rodam em SQLite e, com a variável `KOGNIT_TESTE_POSTGRES`, também num PostgreSQL de verdade (B5).
+- **Limitação do SQLite:** guarda `decimal` como texto, então somar e ordenar valores direto no SQL não é confiável. Por isso as contas são feitas em memória (B2). No PostgreSQL, dinheiro é `numeric(18,2)`.
 
 ### B2. Estado do usuário carregado em memória
 - **Decisão:** o `RepositorioEstado` carrega lançamentos, contas e regras do usuário para listas. As regras do Domínio trabalham nelas, e o repositório salva só as diferenças (novos, alterados e removidos).
@@ -74,15 +77,29 @@ tests/Kognit.Tests   testes do domínio + testes da API rodando em memória
   - Um pequeno negócio tem alguns milhares de lançamentos por ano, o que cabe com folga.
 - **Quando mudar:** com dezenas de milhares de lançamentos por usuário, levar os filtros do extrato para SQL (PostgreSQL) e carregar só a janela necessária.
 
-### B3. `EnsureCreated` em vez de migrações
-- **Decisão:** o banco é criado na primeira execução.
-- **Por quê:** é um MVP, ainda sem dados em produção a preservar.
-- **Antes de produção:** trocar por migrações do EF (`dotnet ef migrations add Inicial`), para alterar o esquema sem apagar dados.
+### B3. Migrações no PostgreSQL; `EnsureCreated` no SQLite
+- **Decisão:**
+  - **PostgreSQL:** as tabelas são criadas e alteradas por **migrações do EF** (pasta `Infra/Migracoes`). A API aplica as pendentes ao iniciar (`Database.Migrate()`).
+  - **SQLite:** o arquivo é criado na hora (`EnsureCreated`), como antes.
+- **Por quê:** no Supabase há dados reais a preservar. As migrações alteram o esquema sem apagar nada e ficam versionadas no Git. No SQLite (desenvolvimento) não vale manter um segundo conjunto de migrações.
+- **Como criar uma migração nova** depois de mudar uma entidade:
+
+  ```bash
+  dotnet ef migrations add NomeDaMudanca -p src/Kognit.Api -o Infra/Migracoes
+  ```
+
+  A ferramenta usa a `FabricaDesignTime` e não precisa de banco.
+- **Alternativa:** aplicar as migrações num passo separado do deploy (`dotnet ef migrations script --idempotent` → *SQL Editor* do Supabase). Esse caminho é mais controlado com vários servidores.
 
 ### B4. Índices que protegem os dados
 - `Lancamentos (UsuarioId, IdExterno)` **único**: a mesma transação do banco nunca entra duas vezes, mesmo com duas sincronizações ao mesmo tempo.
 - `Conexoes.ItemId` **único**: um banco conectado pertence a um único usuário.
 - Enums gravados como texto (`"Entrada"`, `"Detectada"`), para o banco ser legível.
+
+### B5. Testes também no PostgreSQL
+- **Decisão:** com `KOGNIT_TESTE_POSTGRES="Host=…;Username=…;Password=…"`, a `ApiFactory` cria um banco novo por execução, aplica as migrações de verdade, roda todos os testes da API e apaga o banco no final.
+- **Por quê:** diferenças entre SQLite e PostgreSQL (tipos de data e de dinheiro, índices com filtro, fuso horário) só aparecem no banco real.
+- **Resultado:** 33 de 33 passando nos dois.
 
 ---
 
@@ -258,9 +275,12 @@ tests/Kognit.Tests   testes do domínio + testes da API rodando em memória
 
 ## 11. Hospedagem
 
-- **A Vercel não roda .NET.** O front React continua na Vercel; a API vai para um serviço com **Docker** (há `Dockerfile`): Render, Railway, Fly.io ou Azure App Service.
-- **Variáveis de ambiente obrigatórias:** `Jwt__Chave`, `Pluggy__ClientId`, `Pluggy__ClientSecret`, `Pluggy__UrlPublicaApi`, `Pluggy__SegredoWebhook` e `Cors__Origens__0` (endereço do front na Vercel).
-- **SQLite:** o arquivo fica no volume `/data`. Para mais de um servidor, migrar para PostgreSQL (B1, U4).
+- **A Vercel não roda .NET.** O front React continua na Vercel. A API vai para a **AWS**, com o banco no **Supabase** (seção 13; passo a passo em `docs/DEPLOY-AWS.md`).
+- **Variáveis de ambiente obrigatórias:**
+  - `Jwt__Chave`;
+  - `ConnectionStrings__Padrao` (Supabase) e `BancoDeDados__Provedor=Postgres`;
+  - `Pluggy__ClientId`, `Pluggy__ClientSecret`, `Pluggy__UrlPublicaApi` e `Pluggy__SegredoWebhook`;
+  - `Cors__Origens__0` (endereço do front na Vercel).
 
 ---
 
@@ -268,6 +288,51 @@ tests/Kognit.Tests   testes do domínio + testes da API rodando em memória
 
 1. **Integrar o front React** a esta API (guia em `docs/FRONTEND.md`), substituindo o `localStorage` e as funções `/api` da Vercel.
 2. **Notificação push** no celular quando o webhook trouxer transação nova (Web Push com VAPID).
-3. **Migrações do EF e PostgreSQL** antes de dados reais.
+3. **Publicar** na AWS com o banco no Supabase (`docs/DEPLOY-AWS.md`). As migrações e o PostgreSQL já estão prontos (B1, B3, B5).
 4. **LGPD** (seção S5) e **produção na Pluggy** (a conta em teste só conecta bancos de teste).
 5. **Leitura do código de barras pela câmera** e **DDA** para boletos avulsos.
+
+---
+
+## 13. Supabase (banco) + AWS (servidor)
+
+### H1. Supabase como banco de dados
+- **Decisão do usuário:** "o banco a princípio será Supabase".
+- **O que usamos do Supabase:** **só o PostgreSQL**, que é o que a API precisa.
+- **O que não usamos, e por quê:**
+  - **Supabase Auth:** o login da API (JWT próprio, seção S1) já está pronto e testado. Trocar mudaria o contrato com o front. Fica como evolução possível.
+  - **Data API** (REST automático do Supabase): todo acesso aos dados passa pela API, que aplica as regras e o isolamento entre usuários.
+
+### H2. Schema próprio `kognit` (segurança)
+- **Problema:** o Supabase expõe automaticamente as tabelas do schema `public` numa API REST, acessível com a **chave pública** do projeto (a `anon key`, que costuma ficar visível em fronts). Tabelas criadas por fora do painel podem ficar sem RLS, ou seja, legíveis.
+- **Decisão:** no PostgreSQL, as tabelas ficam no schema **`kognit`** (`HasDefaultSchema`), que a Data API não expõe por padrão.
+- **Segunda camada:** a migração inicial **revoga** o acesso dos papéis `anon` e `authenticated` ao schema e às tabelas. O comando só roda se esses papéis existirem, então funciona em qualquer PostgreSQL.
+- **Testado:** num PostgreSQL local com esses papéis recriados, e com privilégios padrão generosos como os do Supabase, o papel `anon` recebe `permission denied for schema kognit`.
+
+### H3. Conexão pelo *Session pooler* do Supabase
+- **Decisão:** usar o *Session pooler* (porta 5432) e não a conexão direta.
+- **Por quê:**
+  - a conexão direta do Supabase usa IPv6, e a rede padrão da AWS é IPv4;
+  - o modo *Transaction* (6543) não mantém a sessão entre comandos, e o modo *Session* é o caminho seguro para o EF.
+- **Na connection string:**
+  - `SSL Mode=Require` (conexão criptografada);
+  - `Maximum Pool Size=10` (não esgota as conexões do plano);
+  - `EnableRetryOnFailure` no EF (refaz sozinho quedas rápidas de rede).
+
+### H4. AWS: EC2 + Docker + Caddy agora; ECS Fargate depois
+- **Decisão (MVP):** uma máquina **EC2** em São Paulo (`sa-east-1`, mesma região do Supabase) rodando `docker compose`:
+  - a **API**;
+  - o **Caddy**, que obtém e renova o **HTTPS** sozinho.
+- **Por quê:**
+  - é o caminho mais simples e barato;
+  - o HTTPS é obrigatório: o navegador bloqueia um front HTTPS chamando uma API HTTP, e o webhook da Pluggy precisa de HTTPS;
+  - com o banco no Supabase, a máquina não guarda dados e pode ser recriada sem perda.
+- **Depois (produção):** **ECR + ECS Fargate + Application Load Balancer + ACM + Secrets Manager**. Antes de rodar várias tarefas, trocar a trava por usuário (U4).
+- **Alternativas consideradas:**
+  - *Elastic Beanstalk*: também serviria, mas tem mais peças sem ganho real no MVP;
+  - *Lightsail*: preço fixo e simples, também serviria.
+
+### H5. IP real do usuário atrás do proxy
+- **Problema:** atrás do Caddy (ou do ALB), a API veria todos os usuários com o IP do proxy. O limite de 10 tentativas de login por minuto passaria a valer **para todos juntos**.
+- **Decisão:** `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` no `docker-compose.yml`, para a API usar o `X-Forwarded-For` repassado pelo proxy.
+- **Por que é seguro:** a porta da API (8080) não é publicada; só o Caddy, na rede interna do Docker, chega nela.

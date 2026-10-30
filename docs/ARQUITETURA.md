@@ -31,7 +31,7 @@ Kognit.slnx
 │   ├── Program.cs                    monta tudo: banco, JWT, CORS, Pluggy, segundo plano, OpenAPI
 │   ├── Controllers/                  rotas (uma classe por recurso)
 │   ├── Contratos/Contratos.cs        JSON de entrada e saída (DTOs) — o "contrato" com o React
-│   ├── Infra/                        entidades do banco, AppDbContext, RepositorioEstado, trava, relógio
+│   ├── Infra/                        entidades do banco, AppDbContext, BancoDeDados (SQLite/Postgres), Migracoes/, RepositorioEstado, trava, relógio
 │   ├── Pluggy/                       cliente HTTP da Pluggy, modelos REST, normalizador
 │   ├── Bancos/                       IProvedorBancario: ProvedorPluggy (real) e ProvedorDemo
 │   └── Servicos/                     Sincronizador, fila + trabalhadores em segundo plano, token JWT
@@ -149,10 +149,13 @@ As outras telas seguem o mesmo padrão: **carregar estado → função do Domín
 
 O Domínio não muda.
 
-**PostgreSQL:**
-1. Adicionar o pacote `Npgsql.EntityFrameworkCore.PostgreSQL`.
-2. Trocar `UseSqlite` por `UseNpgsql` em `Program.cs`.
-3. Criar as migrações (`dotnet ef migrations add Inicial`).
+**Banco de dados:** já funciona com SQLite e PostgreSQL/Supabase (`Infra/BancoDeDados.cs`). Ao mudar uma entidade, crie a migração:
+
+```bash
+dotnet ef migrations add NomeDaMudanca -p src/Kognit.Api -o Infra/Migracoes
+```
+
+No PostgreSQL as tabelas ficam no schema `kognit` (ver `DECISOES.md`, H2).
 
 **Push no celular:** no fim de `Sincronizador.SincronizarAsync`, quando houver `novos`, enviar Web Push para as inscrições do usuário (nova tabela `InscricaoPush`).
 

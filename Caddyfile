@@ -1,0 +1,5 @@
+# O Caddy obtém e renova sozinho o certificado HTTPS para o domínio do .env (DOMINIO).
+{$DOMINIO} {
+	encode gzip
+	reverse_proxy api:8080
+}

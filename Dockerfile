@@ -11,7 +11,7 @@ RUN dotnet publish src/Kognit.Api/Kognit.Api.csproj -c Release -o /app --no-rest
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app ./
-# O banco SQLite fica num volume (/data) para não se perder a cada deploy.
+# Com Supabase (BancoDeDados__Provedor=Postgres) o volume não é usado; com SQLite, o arquivo fica em /data.
 ENV ASPNETCORE_URLS=http://+:8080 \
     ConnectionStrings__Padrao="Data Source=/data/kognit.db"
 VOLUME /data

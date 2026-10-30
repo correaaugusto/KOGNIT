@@ -15,6 +15,7 @@ Front-end: o app React [caixa-claro](https://github.com/correaaugusto/caixa-clar
 | [`docs/DECISOES.md`](docs/DECISOES.md) | todas as decisões, com o porquê |
 | [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) | como foi programado: camadas, fluxos, onde mudar cada regra |
 | [`docs/FRONTEND.md`](docs/FRONTEND.md) | como o React consome a API (login, conectar banco, telas, exemplos de JSON) |
+| [`docs/DEPLOY-AWS.md`](docs/DEPLOY-AWS.md) | publicar: banco no Supabase, servidor na AWS |
 
 ## Rodar localmente
 
@@ -34,7 +35,7 @@ dotnet run --project src/Kognit.Api --urls http://localhost:5080
 dotnet test
 ```
 
-São 33 testes:
+São 33 testes. Para rodá-los também num PostgreSQL de verdade, defina `KOGNIT_TESTE_POSTGRES="Host=localhost;Username=…;Password=…"`.
 - **regras do domínio:** classificação, contas fixas, baixa automática, previsão, alertas, linha digitável;
 - **API rodando em memória** com uma Pluggy simulada: fluxo completo, segurança e webhook.
 
@@ -51,7 +52,8 @@ São 33 testes:
 | `Pluggy__SegredoWebhook` | texto aleatório longo; vai no endereço do webhook |
 | `Jwt__Chave` | chave para assinar os logins (mín. 32 caracteres) — **obrigatória em produção** |
 | `Cors__Origens__0` | endereço do front, ex.: `https://caixa-claro.vercel.app` |
-| `ConnectionStrings__Padrao` | banco de dados (padrão: SQLite `kognit.db`) |
+| `BancoDeDados__Provedor` | `Sqlite` (padrão, desenvolvimento) ou `Postgres` (Supabase) |
+| `ConnectionStrings__Padrao` | conexão do banco (padrão: SQLite `kognit.db`; no Supabase, a do *Session pooler*) |
 
 3. No front, use o widget **Pluggy Connect** com o token de `POST /api/conexoes/token` e envie o `item.id` para `POST /api/conexoes` (passo a passo em `docs/FRONTEND.md`).
 
@@ -80,15 +82,19 @@ São 33 testes:
 | POST | `/api/conexoes/{id}/simular`, `/simular/historico`; DELETE `/api/conexoes/simulacoes` | modo apresentação |
 | POST | `/api/webhooks/pluggy?segredo=` | avisos da Pluggy (transação nova etc.) |
 
-## Publicar
+## Publicar (Supabase + AWS)
 
-A Vercel não roda .NET. Publique a API com o `Dockerfile` em um destes serviços:
-- Render
-- Railway
-- Fly.io
-- Azure App Service
+O banco de produção é o **Supabase** (PostgreSQL), e a API roda na **AWS** (EC2 com Docker e Caddy para o HTTPS). O front React continua na Vercel. Passo a passo completo em [`docs/DEPLOY-AWS.md`](docs/DEPLOY-AWS.md):
 
-Configure as variáveis da tabela acima e um volume em `/data` (onde fica o SQLite). O front React continua na Vercel.
+```bash
+cp .env.exemplo .env   # preencher: domínio, Supabase, chave JWT, Pluggy, endereço do front
+```
+
+```bash
+docker compose up -d --build
+```
+
+Ao iniciar, a API aplica as migrações no Supabase sozinha. As tabelas ficam no schema `kognit`, fora da API pública do Supabase.
 
 ## Estrutura
 
