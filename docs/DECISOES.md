@@ -89,7 +89,8 @@ tests/Kognit.Tests   testes do domínio + testes da API rodando em memória
   ```
 
   A ferramenta usa a `FabricaDesignTime` e não precisa de banco.
-- **Alternativa:** aplicar as migrações num passo separado do deploy (`dotnet ef migrations script --idempotent` → *SQL Editor* do Supabase). Esse caminho é mais controlado com vários servidores.
+- **Script SQL completo:** `database/kognit.sql`, gerado das migrações (`dotnet ef migrations script --idempotent -p src/Kognit.Api -o database/kognit.sql`). Serve para criar o banco à mão no *SQL Editor* do Supabase ou para conferir a estrutura. Testado num PostgreSQL vazio rodando 2 vezes, sem erro. **Gere de novo** a cada migração nova.
+- **Alternativa:** aplicar as migrações num passo separado do deploy (o mesmo script). Esse caminho é mais controlado com vários servidores.
 
 ### B4. Índices que protegem os dados
 - `Lancamentos (UsuarioId, IdExterno)` **único**: a mesma transação do banco nunca entra duas vezes, mesmo com duas sincronizações ao mesmo tempo.

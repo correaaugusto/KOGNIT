@@ -42,7 +42,7 @@ Cada tela da API faz várias consultas ao banco. Por isso **banco e servidor pre
    Host=aws-0-us-east-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.SEU_PROJECT_REF;Password=SUA_SENHA;SSL Mode=Require;Maximum Pool Size=10
    ```
 
-3. **Não crie tabelas.** Ao iniciar, a API aplica as migrações sozinha:
+3. **Não precisa criar tabelas.** Se quiser criá-las à mão ou conferir a estrutura, o script completo está em [`database/kognit.sql`](../database/kognit.sql) (Supabase → *SQL Editor* → colar → *Run*; pode rodar mais de uma vez). De qualquer forma, ao iniciar, a API aplica as migrações sozinha:
    - cria o schema `kognit` e as tabelas;
    - tira o acesso dos papéis públicos do Supabase (`anon` e `authenticated`).
 
